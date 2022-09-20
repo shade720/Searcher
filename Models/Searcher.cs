@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace Searcher.Models
 {
     public static class Searcher
     {
-        public static async Task<SearchResult> SearchKeywordsInDirectory(string directoryPath, string keywordsFilepath, bool caseSensitive)
+        public static SearchResult SearchKeywordsInDirectory(string directoryPath, string keywordsFilepath, bool caseSensitive)
         {
             if (!Directory.Exists(directoryPath))
             {
@@ -27,9 +28,10 @@ namespace Searcher.Models
                 .Select(keyword => keyword.Trim())
                 .ToArray();
 
-            var parallelSearches = directoryFiles.Select(file => SearchInFile(file, keywords, caseSensitive));
-
-            var keywordOccurrencesByFiles = await Task.WhenAll(parallelSearches);
+            var resultCollection = new ConcurrentBag<SearchInfo>();
+            Parallel.ForEach(directoryFiles, file => resultCollection.Add(SearchInFile (file, keywords, caseSensitive)));
+            
+            var keywordOccurrencesByFiles = resultCollection.ToArray();
             var keywordOccurrencesOverall = GetKeywordOccurrencesOverall(keywordOccurrencesByFiles);
 
             return new SearchResult
@@ -52,19 +54,18 @@ namespace Searcher.Models
             });
         }
 
-        private static async Task<SearchInfo> SearchInFile(string filepath, string[] keywords, bool caseSensitive)
+        private static SearchInfo SearchInFile(string filepath, string[] keywords, bool caseSensitive)
         {
             var searchInfo = new SearchInfo
             {
                 Filename = filepath,
                 KeywordsOccurrences = keywords.ToDictionary(keyword => keyword, keyword => 0)
             };
-            
             using (var streamReader = new StreamReader(filepath, Encoding.GetEncoding(1251)))
             {
                 while (!streamReader.EndOfStream)
                 {
-                    var str = await streamReader.ReadLineAsync();
+                    var str = streamReader.ReadLine();
                     foreach (var keyword in keywords)
                     {
                         if (str.Contains(keyword, caseSensitive)) searchInfo.KeywordsOccurrences[keyword]++;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -31,7 +32,7 @@ namespace Searcher.Forms
             pictureBox1.Visible = true;
             try
             {
-                var searchResult = await Task.Run(async () => await Models.Searcher.SearchKeywordsInDirectory(CatalogPathTextbox.Text, KeywordFilepathTextbox.Text, CaseSensitiveCheckBox.Checked));
+                var searchResult = await Task.Run(() => Models.Searcher.SearchKeywordsInDirectory(CatalogPathTextbox.Text, KeywordFilepathTextbox.Text, CaseSensitiveCheckBox.Checked));
                 ShowResults(searchResult);
             }
             catch (Exception exception)
